@@ -1,0 +1,2029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KOL Tracker | Lx.health</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- React & Babel -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0f172a;
+            color: #e2e8f0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+        }
+
+        .kol-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+        }
+
+        .kol-card:hover {
+            border-color: #475569;
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.1);
+        }
+
+        .tier-s {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%);
+            border-left: 3px solid #22c55e;
+        }
+
+        .tier-a {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+            border-left: 3px solid #3b82f6;
+        }
+
+        .tier-b {
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(251, 191, 36, 0.05) 100%);
+            border-left: 3px solid #fbbf24;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-s {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+
+        .badge-a {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }
+
+        .badge-b {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+        }
+
+        .badge-region {
+            background: rgba(168, 85, 247, 0.2);
+            color: #c084fc;
+            font-size: 11px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #e2e8f0;
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .toast.success {
+            border-left: 3px solid #22c55e;
+        }
+
+        .toast.error {
+            border-left: 3px solid #ef4444;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .tab-active {
+            border-bottom: 2px solid #22c55e;
+            color: #22c55e;
+        }
+
+        .input-field {
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: #e2e8f0;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #22c55e;
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: #22c55e;
+            color: #0f172a;
+        }
+
+        .btn-primary:hover {
+            background: #16a34a;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #475569;
+            color: #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #64748b;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(34, 197, 94, 0.3);
+            border-top-color: #22c55e;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #0f172a;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 1px solid #334155;
+            color: #94a3b8;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        th.sortable {
+            cursor: pointer;
+            user-select: none;
+            transition: color 0.15s;
+        }
+
+        th.sortable:hover {
+            color: #22c55e;
+        }
+
+        th.sortable .sort-arrow {
+            display: inline-block;
+            margin-left: 4px;
+            font-size: 10px;
+            opacity: 0.3;
+            transition: opacity 0.15s;
+        }
+
+        th.sortable.active .sort-arrow {
+            opacity: 1;
+            color: #22c55e;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #334155;
+        }
+
+        tr:hover {
+            background: #1e293b;
+        }
+
+        .kol-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #334155;
+            flex-shrink: 0;
+            background: #1e293b;
+            cursor: pointer;
+            transition: border-color 0.15s, transform 0.15s;
+        }
+
+        .kol-avatar:hover {
+            border-color: #22c55e;
+            transform: scale(1.1);
+        }
+
+        .kol-avatar-lg {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #22c55e;
+            background: #1e293b;
+            cursor: pointer;
+            transition: transform 0.15s;
+        }
+
+        .kol-avatar-lg:hover {
+            transform: scale(1.05);
+        }
+
+        .kol-name-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .photo-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            cursor: pointer;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .photo-modal-content {
+            position: relative;
+            max-width: 400px;
+            max-height: 80vh;
+            animation: scaleIn 0.2s ease;
+        }
+
+        .photo-modal-content img {
+            width: 100%;
+            height: auto;
+            border-radius: 16px;
+            border: 3px solid #22c55e;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .photo-modal-name {
+            text-align: center;
+            margin-top: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .photo-modal-sub {
+            text-align: center;
+            margin-top: 4px;
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes scaleIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .expandable-row {
+            cursor: pointer;
+        }
+
+        .expand-icon {
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+
+        .expand-icon.expanded {
+            transform: rotate(90deg);
+        }
+
+        .details-section {
+            background: #0f172a;
+            padding: 16px;
+            border-left: 2px solid #334155;
+            margin-top: 12px;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .detail-label {
+            font-size: 12px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .detail-value {
+            color: #e2e8f0;
+            font-size: 14px;
+            word-break: break-word;
+        }
+
+        .editable-field {
+            position: relative;
+        }
+
+        .edit-indicator {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 4px;
+        }
+
+        .link-button {
+            color: #22c55e;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+            background: none;
+            padding: 0;
+            font-family: inherit;
+        }
+
+        .link-button:hover {
+            text-decoration: underline;
+        }
+
+        .summary-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .summary-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #22c55e;
+            margin: 12px 0;
+        }
+
+        .summary-label {
+            color: #94a3b8;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .funnel-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid #334155;
+        }
+
+        .funnel-item:last-child {
+            border-bottom: none;
+        }
+
+        .funnel-label {
+            min-width: 140px;
+            color: #cbd5e1;
+            font-size: 14px;
+        }
+
+        .funnel-bar {
+            flex: 1;
+            height: 24px;
+            background: linear-gradient(90deg, #22c55e, #16a34a);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+            color: #0f172a;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #e2e8f0;
+            margin: 24px 0 16px 0;
+            border-bottom: 2px solid #334155;
+            padding-bottom: 12px;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+        }
+
+        .modal {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            border-bottom: 1px solid #334155;
+            padding: 20px 0;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+        }
+
+        .login-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 48px;
+            max-width: 420px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4);
+        }
+
+        .google-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 32px;
+            background: #fff;
+            color: #333;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .google-btn:hover {
+            background: #f1f5f9;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .google-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .admin-table th, .admin-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #334155;
+        }
+
+        .admin-table th {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-email {
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        .btn-logout {
+            background: transparent;
+            border: 1px solid #475569;
+            color: #94a3b8;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-logout:hover {
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+
+        .role-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .role-admin {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+
+        .role-member {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useCallback, useRef } = React;
+
+        // Supabase Client
+        const supabaseUrl = 'https://fejvpdxfdawufdiwqxmq.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlanZwZHhmZGF3dWZkaXdxeG1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzOTUwMTAsImV4cCI6MjA4NTk3MTAxMH0.6ReA2hi9ohLVmnF8WvYCkqWlgQmRUvZ_5aMrBYiFIbA';
+        const db = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Anthropic API key is stored server-side in Vercel env vars
+
+        // Toast Component
+        function Toast({ message, type }) {
+            return (
+                <div className={`toast ${type}`}>
+                    {message}
+                </div>
+            );
+        }
+
+        // Toast Manager
+        function useToast() {
+            const [toasts, setToasts] = useState([]);
+
+            const show = useCallback((message, type = 'success', duration = 3000) => {
+                const id = Date.now();
+                setToasts(prev => [...prev, { id, message, type }]);
+                setTimeout(() => {
+                    setToasts(prev => prev.filter(t => t.id !== id));
+                }, duration);
+            }, []);
+
+            return { toasts, show };
+        }
+
+        // Dashboard Tab
+        function DashboardTab({ kols }) {
+            const tiers = {
+                S: kols.filter(k => k.tier === 'S').length,
+                A: kols.filter(k => k.tier === 'A').length,
+                B: kols.filter(k => k.tier === 'B').length,
+            };
+
+            const regions = {
+                US: kols.filter(k => k.region === 'US').length,
+                Europe: kols.filter(k => k.region === 'Europe').length,
+                Israel: kols.filter(k => k.region === 'Israel').length,
+                ROW: kols.filter(k => k.region === 'ROW').length,
+            };
+
+            const outreachStatus = {
+                'Not Started': kols.filter(k => k.outreach_status === 'Not Started' || !k.outreach_status).length,
+                'Contacted': kols.filter(k => k.outreach_status === 'Contacted').length,
+                'In Discussion': kols.filter(k => k.outreach_status === 'In Discussion').length,
+                'Meeting Booked': kols.filter(k => k.outreach_status === 'Meeting Booked').length,
+                'Converted': kols.filter(k => k.outreach_status === 'Converted').length,
+                'Pass': kols.filter(k => k.outreach_status === 'Pass').length,
+            };
+
+            const topSTier = kols.filter(k => k.tier === 'S').sort((a, b) => (b.fit_score || 0) - (a.fit_score || 0)).slice(0, 5);
+
+            return (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <div className="summary-card">
+                            <div className="summary-label">Total KOLs</div>
+                            <div className="summary-value">{kols.length}</div>
+                        </div>
+                        <div className="summary-card">
+                            <div className="summary-label">S-Tier</div>
+                            <div className="summary-value text-green-400">{tiers.S}</div>
+                        </div>
+                        <div className="summary-card">
+                            <div className="summary-label">A-Tier</div>
+                            <div className="summary-value text-blue-400">{tiers.A}</div>
+                        </div>
+                        <div className="summary-card">
+                            <div className="summary-label">B-Tier</div>
+                            <div className="summary-value text-amber-400">{tiers.B}</div>
+                        </div>
+                        <div className="summary-card">
+                            <div className="summary-label">Contacts</div>
+                            <div className="summary-value text-purple-400">{kols.filter(k => k.date_contacted).length}</div>
+                        </div>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-6">
+                        <div className="kol-card p-6">
+                            <h3 className="section-title m-0 mb-4 pb-0 border-b-0">Regions</h3>
+                            <div className="space-y-3">
+                                {Object.entries(regions).map(([region, count]) => (
+                                    <div key={region} className="flex justify-between items-center">
+                                        <span className="text-gray-300">{region}</span>
+                                        <div className="badge badge-region">{count}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="kol-card p-6">
+                            <h3 className="section-title m-0 mb-4 pb-0 border-b-0">Outreach Funnel</h3>
+                            <div className="space-y-2">
+                                {Object.entries(outreachStatus).map(([status, count]) => (
+                                    <div key={status} className="funnel-item">
+                                        <div className="funnel-label">{status}</div>
+                                        <div className="funnel-bar" style={{ width: `${Math.max(count * 20, 40)}px` }}>
+                                            {count}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="kol-card p-6">
+                        <h3 className="section-title m-0 mb-4">Top Priority S-Tier KOLs</h3>
+                        <div className="space-y-3">
+                            {topSTier.length > 0 ? (
+                                topSTier.map(kol => (
+                                    <div key={kol.id} className="flex justify-between items-start pb-3 border-b border-gray-700 last:border-b-0">
+                                        <div className="flex-1">
+                                            <div className="font-semibold text-white">{kol.name}</div>
+                                            <div className="text-sm text-gray-400">{kol.country} • {kol.primary_platform}</div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <span className="badge badge-s">S-Tier</span>
+                                            <span className="badge badge-region">{kol.fit_score}/10</span>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-gray-400">No S-tier KOLs yet</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // KOL Database Tab
+        function KOLDatabaseTab({ kols, showToast }) {
+            const [filters, setFilters] = useState({
+                region: 'All',
+                tier: 'All',
+                status: 'Active',
+                scoreMin: 1,
+                scoreMax: 10,
+                search: ''
+            });
+            const [expandedId, setExpandedId] = useState(null);
+            const [editingId, setEditingId] = useState(null);
+            const [editValues, setEditValues] = useState({});
+            const saveTimeouts = useRef({});
+            const [sortConfig, setSortConfig] = useState({ key: 'fit_score', dir: 'desc' });
+
+            // Parse followers string like "1.2M (YT, IG)" or "500K+" into a number
+            const parseFollowersNum = (str) => {
+                if (!str) return 0;
+                const cleaned = str.replace(/[,+~]/g, '').trim();
+                const match = cleaned.match(/([\d.]+)\s*(m|k|b)?/i);
+                if (!match) return 0;
+                const num = parseFloat(match[1]);
+                const suffix = (match[2] || '').toLowerCase();
+                if (suffix === 'b') return num * 1000000000;
+                if (suffix === 'm') return num * 1000000;
+                if (suffix === 'k') return num * 1000;
+                return num;
+            };
+
+            // Format followers: put number first, sources in parentheses
+            const formatFollowers = (str) => {
+                if (!str || str === '-') return '-';
+                // Already formatted or just a number
+                const raw = str.trim();
+                // Try to extract numeric part and platform/source part
+                // Common patterns: "1.2M (YouTube, IG)", "YouTube: 1.2M", "~500K+ across platforms"
+                const numMatch = raw.match(/([\d,.]+\s*[KMBkmb]?\+?)/);
+                const platformMatch = raw.match(/\(([^)]+)\)/);
+                if (numMatch && platformMatch) {
+                    // Already has number and (sources) — ensure number comes first
+                    const beforeParen = raw.substring(0, raw.indexOf('(')).trim();
+                    const numInBefore = beforeParen.match(/([\d,.]+\s*[KMBkmb]?\+?)/);
+                    if (numInBefore) return raw; // already formatted correctly
+                }
+                return raw;
+            };
+
+            const handleSort = (key) => {
+                setSortConfig(prev => ({
+                    key,
+                    dir: prev.key === key && prev.dir === 'asc' ? 'desc' : prev.key === key ? 'asc' : 'desc'
+                }));
+            };
+
+            const SortHeader = ({ label, sortKey }) => {
+                const isActive = sortConfig.key === sortKey;
+                const arrow = isActive ? (sortConfig.dir === 'asc' ? '▲' : '▼') : '▲';
+                return (
+                    <th className={`sortable ${isActive ? 'active' : ''}`}
+                        onClick={(e) => { e.stopPropagation(); handleSort(sortKey); }}>
+                        {label}<span className="sort-arrow">{arrow}</span>
+                    </th>
+                );
+            };
+
+            // Photo modal state
+            const [photoModal, setPhotoModal] = useState(null);
+
+            // Avatar URL priority: photo_url → unavatar/x/{handle} → initials
+            const getAvatarUrl = (kol) => {
+                // 1. Direct photo URL from database (most reliable)
+                if (kol.photo_url) return kol.photo_url;
+                // 2. Try X/Twitter handle via unavatar
+                const handle = (kol.twitter_handle || '').replace('@', '').trim();
+                if (handle) return `https://unavatar.io/x/${handle}?fallback=false`;
+                // 3. Styled initials
+                return getInitialsUrl(kol);
+            };
+
+            // Styled initials fallback
+            const getInitialsUrl = (kol) => {
+                const name = encodeURIComponent(kol.name || '?');
+                return `https://ui-avatars.com/api/?name=${name}&background=1e293b&color=22c55e&size=256&bold=true`;
+            };
+
+            // Error handler: any image fails → try unavatar if we haven't yet, else initials
+            const handleAvatarError = (e, kol) => {
+                const src = e.target.src;
+                // If photo_url failed, try unavatar as backup
+                if (kol.photo_url && src === kol.photo_url) {
+                    const handle = (kol.twitter_handle || '').replace('@', '').trim();
+                    if (handle) {
+                        e.target.src = `https://unavatar.io/x/${handle}?fallback=false`;
+                        return;
+                    }
+                }
+                // Final fallback: initials
+                e.target.onerror = null;
+                e.target.src = getInitialsUrl(kol);
+            };
+
+            // Open photo modal (prevent row click)
+            const openPhotoModal = (e, kol) => {
+                e.stopPropagation();
+                setPhotoModal(kol);
+            };
+
+            const filteredKols = kols.filter(kol => {
+                const regionMatch = filters.region === 'All' || kol.region === filters.region;
+                const tierMatch = filters.tier === 'All' || kol.tier === filters.tier;
+                const effectiveStatus = kol.outreach_status || 'Not Started';
+                const statusMatch = filters.status === 'All' ? true : filters.status === 'Active' ? effectiveStatus !== 'Pass' : effectiveStatus === filters.status;
+                const scoreMatch = (kol.fit_score || 0) >= filters.scoreMin && (kol.fit_score || 0) <= filters.scoreMax;
+                const searchMatch = kol.name.toLowerCase().includes(filters.search.toLowerCase());
+                return regionMatch && tierMatch && statusMatch && scoreMatch && searchMatch;
+            });
+
+            // Sort filtered results
+            const sortedKols = [...filteredKols].sort((a, b) => {
+                const { key, dir } = sortConfig;
+                const mult = dir === 'asc' ? 1 : -1;
+
+                if (key === 'est_followers') {
+                    return mult * (parseFollowersNum(a.est_followers) - parseFollowersNum(b.est_followers));
+                }
+                if (key === 'fit_score') {
+                    return mult * ((a.fit_score || 0) - (b.fit_score || 0));
+                }
+                // Tier: S > A > B
+                if (key === 'tier') {
+                    const tierOrder = { S: 3, A: 2, B: 1 };
+                    return mult * ((tierOrder[a.tier] || 0) - (tierOrder[b.tier] || 0));
+                }
+                // String columns
+                const aVal = (a[key] || '').toString().toLowerCase();
+                const bVal = (b[key] || '').toString().toLowerCase();
+                return mult * aVal.localeCompare(bVal);
+            });
+
+            const handleFieldChange = (kolId, field, value) => {
+                setEditValues(prev => ({
+                    ...prev,
+                    [kolId]: { ...prev[kolId], [field]: value }
+                }));
+
+                if (saveTimeouts.current[kolId]) {
+                    clearTimeout(saveTimeouts.current[kolId]);
+                }
+
+                saveTimeouts.current[kolId] = setTimeout(async () => {
+                    try {
+                        await db
+                            .from('kols')
+                            .update({ [field]: value })
+                            .eq('id', kolId);
+                        showToast('Changes saved', 'success', 2000);
+                    } catch (error) {
+                        showToast('Error saving changes', 'error');
+                        console.error(error);
+                    }
+                }, 1000);
+            };
+
+            const getTierColor = (tier) => {
+                switch(tier) {
+                    case 'S': return 'badge-s';
+                    case 'A': return 'badge-a';
+                    case 'B': return 'badge-b';
+                    default: return '';
+                }
+            };
+
+            return (
+                <div className="space-y-4">
+                    <div className="kol-card p-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                            <div>
+                                <label className="block text-xs text-gray-400 mb-1 font-semibold uppercase tracking-wide">Search</label>
+                                <input
+                                    type="text"
+                                    placeholder="Search by name..."
+                                    className="input-field w-full"
+                                    value={filters.search}
+                                    onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-gray-400 mb-1 font-semibold uppercase tracking-wide">Region</label>
+                                <select
+                                    className="input-field w-full"
+                                    value={filters.region}
+                                    onChange={(e) => setFilters({ ...filters, region: e.target.value })}
+                                >
+                                    <option value="All">All Regions</option>
+                                    <option value="US">US</option>
+                                    <option value="Europe">Europe</option>
+                                    <option value="Israel">Israel</option>
+                                    <option value="ROW">ROW</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs text-gray-400 mb-1 font-semibold uppercase tracking-wide">Tier</label>
+                                <select
+                                    className="input-field w-full"
+                                    value={filters.tier}
+                                    onChange={(e) => setFilters({ ...filters, tier: e.target.value })}
+                                >
+                                    <option value="All">All Tiers</option>
+                                    <option value="S">S-Tier</option>
+                                    <option value="A">A-Tier</option>
+                                    <option value="B">B-Tier</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs text-gray-400 mb-1 font-semibold uppercase tracking-wide">Status</label>
+                                <select
+                                    className="input-field w-full"
+                                    value={filters.status}
+                                    onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                                >
+                                    <option value="Active">Active (hide Pass)</option>
+                                    <option value="All">All Statuses</option>
+                                    <option value="Not Started">Not Started</option>
+                                    <option value="Contacted">Contacted</option>
+                                    <option value="In Discussion">In Discussion</option>
+                                    <option value="Meeting Booked">Meeting Booked</option>
+                                    <option value="Converted">Converted</option>
+                                    <option value="Pass">Pass only</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs text-gray-400 mb-1 font-semibold uppercase tracking-wide">Min Score</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="10"
+                                    placeholder="1"
+                                    className="input-field w-full"
+                                    value={filters.scoreMin}
+                                    onChange={(e) => setFilters({ ...filters, scoreMin: parseInt(e.target.value) || 1 })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-gray-400 mb-1 font-semibold uppercase tracking-wide">Max Score</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="10"
+                                    placeholder="10"
+                                    className="input-field w-full"
+                                    value={filters.scoreMax}
+                                    onChange={(e) => setFilters({ ...filters, scoreMax: parseInt(e.target.value) || 10 })}
+                                />
+                            </div>
+                        </div>
+                        <div className="text-sm text-gray-400 mt-2">{filteredKols.length} results</div>
+                    </div>
+
+                    <div className="kol-card overflow-hidden">
+                        <div className="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th></th>
+                                        <SortHeader label="Name" sortKey="name" />
+                                        <SortHeader label="Region" sortKey="region" />
+                                        <SortHeader label="Tier" sortKey="tier" />
+                                        <SortHeader label="Type" sortKey="kol_type" />
+                                        <SortHeader label="Country" sortKey="country" />
+                                        <SortHeader label="Platform" sortKey="primary_platform" />
+                                        <SortHeader label="Followers" sortKey="est_followers" />
+                                        <SortHeader label="Score" sortKey="fit_score" />
+                                        <SortHeader label="Status" sortKey="outreach_status" />
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {sortedKols.map(kol => (
+                                        <React.Fragment key={kol.id}>
+                                            <tr
+                                                className="expandable-row"
+                                                style={kol.outreach_status === 'Pass' ? { opacity: 0.45 } : {}}
+                                                onClick={() => setExpandedId(expandedId === kol.id ? null : kol.id)}
+                                            >
+                                                <td>
+                                                    <span className={`expand-icon ${expandedId === kol.id ? 'expanded' : ''}`}>▶</span>
+                                                </td>
+                                                <td className="font-medium">
+                                                    <div className="kol-name-cell">
+                                                        <img
+                                                            src={getAvatarUrl(kol)}
+                                                            alt={kol.name}
+                                                            className="kol-avatar"
+                                                            onClick={(e) => openPhotoModal(e, kol)}
+                                                            onError={(e) => handleAvatarError(e, kol)}
+                                                        />
+                                                        {kol.name}
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span className="badge badge-region">{kol.region}</span>
+                                                </td>
+                                                <td>
+                                                    <span className={`badge ${getTierColor(kol.tier)}`}>{kol.tier}</span>
+                                                </td>
+                                                <td className="text-sm">{kol.kol_type || '-'}</td>
+                                                <td className="text-sm">{kol.country || '-'}</td>
+                                                <td className="text-sm">{kol.primary_platform || '-'}</td>
+                                                <td className="text-sm">{formatFollowers(kol.est_followers)}</td>
+                                                <td className="font-semibold text-green-400">{kol.fit_score || '-'}</td>
+                                                <td>
+                                                    <span className={`text-sm px-2 py-1 rounded ${
+                                                        kol.outreach_status === 'Pass' ? 'bg-red-900 bg-opacity-40 text-red-400' :
+                                                        kol.outreach_status === 'Converted' ? 'bg-green-900 bg-opacity-40 text-green-400' :
+                                                        kol.outreach_status === 'Meeting Booked' ? 'bg-blue-900 bg-opacity-40 text-blue-400' :
+                                                        'bg-gray-700 bg-opacity-30'
+                                                    }`}>
+                                                        {kol.outreach_status || 'Not Started'}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            {expandedId === kol.id && (
+                                                <tr>
+                                                    <td colSpan="10">
+                                                        <div className="details-section">
+                                                            <div style={{ display: 'flex', gap: '20px', marginBottom: '16px', alignItems: 'flex-start' }}>
+                                                                <img
+                                                                    src={getAvatarUrl(kol)}
+                                                                    alt={kol.name}
+                                                                    className="kol-avatar-lg"
+                                                                    onClick={(e) => openPhotoModal(e, kol)}
+                                                                    onError={(e) => handleAvatarError(e, kol)}
+                                                                />
+                                                                <div>
+                                                                    <div style={{ fontSize: '18px', fontWeight: 600, color: '#fff' }}>{kol.name}</div>
+                                                                    <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '4px' }}>
+                                                                        {kol.kol_type} • {kol.country} • {kol.primary_platform}
+                                                                    </div>
+                                                                    <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '2px' }}>
+                                                                        {kol.content_focus}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="detail-grid">
+                                                                {kol.why_fit && (
+                                                                    <div className="detail-item col-span-2">
+                                                                        <div className="detail-label">Why Fit</div>
+                                                                        <div className="detail-value">{kol.why_fit}</div>
+                                                                    </div>
+                                                                )}
+
+                                                                {kol.outreach_hook && (
+                                                                    <div className="detail-item col-span-2">
+                                                                        <div className="detail-label">Outreach Hook</div>
+                                                                        <div className="detail-value">{kol.outreach_hook}</div>
+                                                                    </div>
+                                                                )}
+
+                                                                {kol.website && (
+                                                                    <div className="detail-item">
+                                                                        <div className="detail-label">Website</div>
+                                                                        <a href={kol.website} target="_blank" rel="noopener noreferrer" className="link-button">
+                                                                            {kol.website}
+                                                                        </a>
+                                                                    </div>
+                                                                )}
+
+                                                                {kol.twitter_handle && (
+                                                                    <div className="detail-item">
+                                                                        <div className="detail-label">Twitter</div>
+                                                                        <a href={`https://twitter.com/${kol.twitter_handle}`} target="_blank" rel="noopener noreferrer" className="link-button">
+                                                                            @{kol.twitter_handle}
+                                                                        </a>
+                                                                    </div>
+                                                                )}
+
+                                                                <div className="detail-item">
+                                                                    <div className="detail-label">Outreach Status</div>
+                                                                    <select
+                                                                        className="input-field"
+                                                                        value={editValues[kol.id]?.outreach_status || kol.outreach_status || 'Not Started'}
+                                                                        onChange={(e) => handleFieldChange(kol.id, 'outreach_status', e.target.value)}
+                                                                    >
+                                                                        <option value="Not Started">Not Started</option>
+                                                                        <option value="Contacted">Contacted</option>
+                                                                        <option value="In Discussion">In Discussion</option>
+                                                                        <option value="Meeting Booked">Meeting Booked</option>
+                                                                        <option value="Converted">Converted</option>
+                                                                        <option value="Pass">Pass</option>
+                                                                    </select>
+                                                                </div>
+
+                                                                <div className="detail-item">
+                                                                    <div className="detail-label">Deal Stage</div>
+                                                                    <input
+                                                                        type="text"
+                                                                        className="input-field"
+                                                                        value={editValues[kol.id]?.deal_stage || kol.deal_stage || ''}
+                                                                        onChange={(e) => handleFieldChange(kol.id, 'deal_stage', e.target.value)}
+                                                                        placeholder="e.g., Negotiation"
+                                                                    />
+                                                                </div>
+
+                                                                <div className="detail-item">
+                                                                    <div className="detail-label">Owner</div>
+                                                                    <input
+                                                                        type="text"
+                                                                        className="input-field"
+                                                                        value={editValues[kol.id]?.owner || kol.owner || ''}
+                                                                        onChange={(e) => handleFieldChange(kol.id, 'owner', e.target.value)}
+                                                                        placeholder="Team member name"
+                                                                    />
+                                                                </div>
+
+                                                                <div className="detail-item col-span-2">
+                                                                    <div className="detail-label">Intro Lead</div>
+                                                                    <input
+                                                                        type="text"
+                                                                        className="input-field"
+                                                                        value={editValues[kol.id]?.intro_lead || kol.intro_lead || ''}
+                                                                        onChange={(e) => handleFieldChange(kol.id, 'intro_lead', e.target.value)}
+                                                                        placeholder="Who can introduce"
+                                                                    />
+                                                                </div>
+
+                                                                <div className="detail-item col-span-2">
+                                                                    <div className="detail-label">Notes</div>
+                                                                    <textarea
+                                                                        className="input-field"
+                                                                        rows="3"
+                                                                        value={editValues[kol.id]?.notes || kol.notes || ''}
+                                                                        onChange={(e) => handleFieldChange(kol.id, 'notes', e.target.value)}
+                                                                        placeholder="Any additional notes"
+                                                                    ></textarea>
+                                                                </div>
+
+                                                                {kol.date_contacted && (
+                                                                    <div className="detail-item">
+                                                                        <div className="detail-label">Date Contacted</div>
+                                                                        <div className="detail-value">{new Date(kol.date_contacted).toLocaleDateString()}</div>
+                                                                    </div>
+                                                                )}
+
+                                                                {kol.response && (
+                                                                    <div className="detail-item">
+                                                                        <div className="detail-label">Response</div>
+                                                                        <div className="detail-value">{kol.response}</div>
+                                                                    </div>
+                                                                )}
+
+                                                                {kol.follow_up_date && (
+                                                                    <div className="detail-item">
+                                                                        <div className="detail-label">Follow-up Date</div>
+                                                                        <div className="detail-value">{new Date(kol.follow_up_date).toLocaleDateString()}</div>
+                                                                    </div>
+                                                                )}
+
+                                                                {kol.contact_method && (
+                                                                    <div className="detail-item">
+                                                                        <div className="detail-label">Contact Method</div>
+                                                                        <div className="detail-value">{kol.contact_method}</div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Photo Modal */}
+                    {photoModal && (
+                        <div className="photo-modal-overlay" onClick={() => setPhotoModal(null)}>
+                            <div className="photo-modal-content" onClick={(e) => e.stopPropagation()}>
+                                <img
+                                    src={getAvatarUrl(photoModal)}
+                                    alt={photoModal.name}
+                                    style={{ width: '100%', maxWidth: '360px', height: 'auto' }}
+                                    onError={(e) => handleAvatarError(e, photoModal)}
+                                />
+                                <div className="photo-modal-name">{photoModal.name}</div>
+                                <div className="photo-modal-sub">
+                                    {photoModal.kol_type} &bull; {photoModal.country}
+                                    {photoModal.twitter_handle && (
+                                        <span> &bull; <a href={`https://x.com/${photoModal.twitter_handle}`}
+                                            target="_blank" rel="noopener noreferrer"
+                                            style={{ color: '#22c55e', textDecoration: 'none' }}
+                                            onClick={(e) => e.stopPropagation()}>
+                                            @{photoModal.twitter_handle}
+                                        </a></span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Add KOL Tab
+        function AddKOLTab({ showToast, onKOLAdded }) {
+            const [searchName, setSearchName] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [aiData, setAiData] = useState(null);
+            const [editedData, setEditedData] = useState(null);
+
+            const researchWithAI = async () => {
+                if (!searchName.trim()) {
+                    showToast('Please enter a name', 'error');
+                    return;
+                }
+
+                setLoading(true);
+                try {
+                    const response = await fetch('/api/research', {
+                        method: 'POST',
+                        headers: { 'content-type': 'application/json' },
+                        body: JSON.stringify({ name: searchName })
+                    });
+
+                    if (!response.ok) {
+                        const errBody = await response.text();
+                        console.error('API error:', response.status, errBody);
+                        throw new Error(`API request failed (${response.status}): ${errBody.slice(0, 200)}`);
+                    }
+
+                    const result = await response.json();
+                    const content = result.content[0].text;
+
+                    // Extract JSON from response — Claude sometimes wraps it in ```json blocks
+                    let jsonStr = content;
+                    const codeBlockMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+                    if (codeBlockMatch) {
+                        jsonStr = codeBlockMatch[1].trim();
+                    } else {
+                        // Try to find raw JSON object
+                        const jsonMatch = content.match(/\{[\s\S]*\}/);
+                        if (jsonMatch) jsonStr = jsonMatch[0];
+                    }
+
+                    let jsonData;
+                    try {
+                        jsonData = JSON.parse(jsonStr);
+                    } catch (parseErr) {
+                        console.error('JSON parse failed. Raw content:', content);
+                        throw new Error('Could not parse AI response as JSON');
+                    }
+                    jsonData.region = jsonData.region || 'US';
+                    jsonData.tier = jsonData.tier || 'B';
+                    jsonData.fit_score = parseInt(jsonData.fit_score) || 7;
+
+                    setAiData(jsonData);
+                    setEditedData(jsonData);
+                    showToast('AI research complete!', 'success');
+                } catch (error) {
+                    console.error('AI Research Error:', error);
+                    showToast(error.message || 'Error during AI research', 'error');
+                }
+                setLoading(false);
+            };
+
+            const addToDatabase = async () => {
+                try {
+                    const insertData = {
+                        ...editedData,
+                        outreach_status: 'Not Started',
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    };
+
+                    const { data, error } = await db
+                        .from('kols')
+                        .insert([insertData])
+                        .select();
+
+                    if (error) throw error;
+
+                    showToast('KOL added successfully!', 'success');
+                    setSearchName('');
+                    setAiData(null);
+                    setEditedData(null);
+                    onKOLAdded();
+                } catch (error) {
+                    console.error('Error:', error);
+                    showToast('Error adding KOL to database', 'error');
+                }
+            };
+
+            return (
+                <div className="space-y-6">
+                    <div className="kol-card p-6">
+                        <h3 className="text-xl font-bold mb-4">AI-Powered KOL Research</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold mb-2">Search KOL Name</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="e.g., Peter Attia, Huberman, etc."
+                                        className="input-field flex-1"
+                                        value={searchName}
+                                        onChange={(e) => setSearchName(e.target.value)}
+                                        onKeyPress={(e) => e.key === 'Enter' && researchWithAI()}
+                                    />
+                                    <button
+                                        onClick={researchWithAI}
+                                        disabled={loading}
+                                        className="btn btn-primary"
+                                    >
+                                        {loading ? <span className="loading"></span> : 'Research with AI'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {aiData && editedData && (
+                        <div className="kol-card p-6">
+                            <h3 className="text-xl font-bold mb-4">AI Research Results - Review & Edit</h3>
+                            <div className="detail-grid">
+                                <div className="detail-item">
+                                    <div className="detail-label">Name</div>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        value={editedData.name || ''}
+                                        onChange={(e) => setEditedData({ ...editedData, name: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="detail-item">
+                                    <div className="detail-label">Country</div>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        value={editedData.country || ''}
+                                        onChange={(e) => setEditedData({ ...editedData, country: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="detail-item">
+                                    <div className="detail-label">Region</div>
+                                    <select
+                                        className="input-field"
+                                        value={editedData.region || 'US'}
+                                        onChange={(e) => setEditedData({ ...editedData, region: e.target.value })}
+                                    >
+                                        <option value="US">US</option>
+                                        <option value="Europe">Europe</option>
+                                        <option value="Israel">Israel</option>
+                                        <option value="ROW">ROW</option>
+                                    </select>
+                                </div>
+
+                                <div className="detail-item">
+                                    <div className="detail-label">Tier</div>
+                                    <select
+                                        className="input-field"
+                                        value={editedData.tier || 'B'}
+                                        onChange={(e) => setEditedData({ ...editedData, tier: e.target.value })}
+                                    >
+                                        <option value="S">S</option>
+                                        <option value="A">A</option>
+                                        <option value="B">B</option>
+                                    </select>
+                                </div>
+
+                                <div className="detail-item">
+                                    <div className="detail-label">KOL Type</div>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        value={editedData.kol_type || ''}
+                                        onChange={(e) => setEditedData({ ...editedData, kol_type: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="detail-item">
+                                    <div className="detail-label">Primary Platform</div>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        value={editedData.primary_platform || ''}
+                                        onChange={(e) => setEditedData({ ...editedData, primary_platform: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="detail-item">
+                                    <div className="detail-label">Est. Followers</div>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        value={editedData.est_followers || ''}
+                                        onChange={(e) => setEditedData({ ...editedData, est_followers: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="detail-item">
+                                    <div className="detail-label">Fit Score (1-10)</div>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="10"
+                                        className="input-field"
+                                        value={editedData.fit_score || 5}
+                                        onChange={(e) => setEditedData({ ...editedData, fit_score: parseInt(e.target.value) })}
+                                    />
+                                </div>
+
+                                <div className="detail-item">
+                                    <div className="detail-label">Twitter Handle</div>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        value={editedData.twitter_handle || ''}
+                                        onChange={(e) => setEditedData({ ...editedData, twitter_handle: e.target.value })}
+                                        placeholder="without @"
+                                    />
+                                </div>
+
+                                <div className="detail-item">
+                                    <div className="detail-label">Website</div>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        value={editedData.website || ''}
+                                        onChange={(e) => setEditedData({ ...editedData, website: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="detail-item col-span-2">
+                                    <div className="detail-label">Content Focus</div>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        value={editedData.content_focus || ''}
+                                        onChange={(e) => setEditedData({ ...editedData, content_focus: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="detail-item col-span-2">
+                                    <div className="detail-label">Why Fit</div>
+                                    <textarea
+                                        className="input-field"
+                                        rows="3"
+                                        value={editedData.why_fit || ''}
+                                        onChange={(e) => setEditedData({ ...editedData, why_fit: e.target.value })}
+                                    ></textarea>
+                                </div>
+
+                                <div className="detail-item col-span-2">
+                                    <div className="detail-label">Outreach Hook</div>
+                                    <textarea
+                                        className="input-field"
+                                        rows="3"
+                                        value={editedData.outreach_hook || ''}
+                                        onChange={(e) => setEditedData({ ...editedData, outreach_hook: e.target.value })}
+                                    ></textarea>
+                                </div>
+
+                                <div className="detail-item col-span-2">
+                                    <div className="detail-label">Notes</div>
+                                    <textarea
+                                        className="input-field"
+                                        rows="2"
+                                        value={editedData.notes || ''}
+                                        onChange={(e) => setEditedData({ ...editedData, notes: e.target.value })}
+                                    ></textarea>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 mt-6">
+                                <button
+                                    onClick={addToDatabase}
+                                    className="btn btn-primary"
+                                >
+                                    Add to Database
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setAiData(null);
+                                        setEditedData(null);
+                                    }}
+                                    className="btn btn-secondary"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Login Screen
+        function LoginScreen({ onLogin, loading: loginLoading }) {
+            return (
+                <div className="login-container">
+                    <div className="login-card">
+                        <h1 style={{ fontSize: '36px', fontWeight: 700, marginBottom: '8px' }}>
+                            <span style={{ color: '#22c55e' }}>Lx.</span>
+                            <span style={{ color: '#fff' }}>health</span>
+                        </h1>
+                        <p style={{ color: '#94a3b8', fontSize: '16px', marginBottom: '36px' }}>
+                            KOL Tracker
+                        </p>
+                        <button className="google-btn" onClick={onLogin} disabled={loginLoading}>
+                            <svg viewBox="0 0 24 24">
+                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                            </svg>
+                            {loginLoading ? 'Signing in...' : 'Sign in with Google'}
+                        </button>
+                        <p style={{ color: '#475569', fontSize: '12px', marginTop: '24px' }}>
+                            Access restricted to authorized team members
+                        </p>
+                    </div>
+                </div>
+            );
+        }
+
+        // Access Denied Screen
+        function AccessDeniedScreen({ email, onLogout }) {
+            return (
+                <div className="login-container">
+                    <div className="login-card">
+                        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔒</div>
+                        <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '12px' }}>
+                            Access Denied
+                        </h2>
+                        <p style={{ color: '#94a3b8', fontSize: '15px', marginBottom: '8px' }}>
+                            Your account is not authorized to access this application.
+                        </p>
+                        <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '32px' }}>
+                            Signed in as: <strong style={{ color: '#cbd5e1' }}>{email}</strong>
+                        </p>
+                        <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '24px' }}>
+                            Please contact your administrator to request access.
+                        </p>
+                        <button className="btn btn-secondary" onClick={onLogout}>
+                            Sign out
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        // Admin Panel - User Management
+        function AdminPanel({ showToast, currentUserEmail }) {
+            const [users, setUsers] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [newEmail, setNewEmail] = useState('');
+            const [newRole, setNewRole] = useState('member');
+            const [adding, setAdding] = useState(false);
+
+            const loadUsers = useCallback(async () => {
+                try {
+                    const { data, error } = await db
+                        .from('allowed_users')
+                        .select('*')
+                        .order('created_at', { ascending: true });
+                    if (error) throw error;
+                    setUsers(data || []);
+                } catch (error) {
+                    console.error('Error loading users:', error);
+                    showToast('Error loading users', 'error');
+                }
+                setLoading(false);
+            }, [showToast]);
+
+            useEffect(() => {
+                loadUsers();
+            }, [loadUsers]);
+
+            const addUser = async () => {
+                const email = newEmail.trim().toLowerCase();
+                if (!email || !email.includes('@')) {
+                    showToast('Please enter a valid email', 'error');
+                    return;
+                }
+                setAdding(true);
+                try {
+                    const { error } = await db
+                        .from('allowed_users')
+                        .insert([{ email, role: newRole }]);
+                    if (error) {
+                        if (error.code === '23505') {
+                            showToast('This email is already added', 'error');
+                        } else {
+                            throw error;
+                        }
+                    } else {
+                        showToast(`Added ${email} as ${newRole}`, 'success');
+                        setNewEmail('');
+                        setNewRole('member');
+                        loadUsers();
+                    }
+                } catch (error) {
+                    console.error('Error adding user:', error);
+                    showToast('Error adding user', 'error');
+                }
+                setAdding(false);
+            };
+
+            const removeUser = async (user) => {
+                if (user.email === currentUserEmail) {
+                    showToast("You can't remove yourself", 'error');
+                    return;
+                }
+                try {
+                    const { error } = await db
+                        .from('allowed_users')
+                        .delete()
+                        .eq('id', user.id);
+                    if (error) throw error;
+                    showToast(`Removed ${user.email}`, 'success');
+                    loadUsers();
+                } catch (error) {
+                    console.error('Error removing user:', error);
+                    showToast('Error removing user', 'error');
+                }
+            };
+
+            const toggleRole = async (user) => {
+                if (user.email === currentUserEmail) {
+                    showToast("You can't change your own role", 'error');
+                    return;
+                }
+                const newUserRole = user.role === 'admin' ? 'member' : 'admin';
+                try {
+                    const { error } = await db
+                        .from('allowed_users')
+                        .update({ role: newUserRole })
+                        .eq('id', user.id);
+                    if (error) throw error;
+                    showToast(`Changed ${user.email} to ${newUserRole}`, 'success');
+                    loadUsers();
+                } catch (error) {
+                    console.error('Error updating role:', error);
+                    showToast('Error updating role', 'error');
+                }
+            };
+
+            if (loading) {
+                return (
+                    <div className="flex justify-center items-center h-64">
+                        <div className="loading" style={{ width: '40px', height: '40px' }}></div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="space-y-6">
+                    <div className="kol-card p-6">
+                        <h3 className="text-xl font-bold mb-4">Add Team Member</h3>
+                        <div className="flex gap-3 items-end">
+                            <div className="flex-1">
+                                <label className="block text-xs text-gray-400 mb-1 font-semibold uppercase tracking-wide">Email</label>
+                                <input
+                                    type="email"
+                                    placeholder="team@lx.health"
+                                    className="input-field w-full"
+                                    value={newEmail}
+                                    onChange={(e) => setNewEmail(e.target.value)}
+                                    onKeyPress={(e) => e.key === 'Enter' && addUser()}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-gray-400 mb-1 font-semibold uppercase tracking-wide">Role</label>
+                                <select
+                                    className="input-field"
+                                    value={newRole}
+                                    onChange={(e) => setNewRole(e.target.value)}
+                                >
+                                    <option value="member">Member</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
+                            <button
+                                onClick={addUser}
+                                disabled={adding}
+                                className="btn btn-primary"
+                            >
+                                {adding ? 'Adding...' : 'Add User'}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="kol-card overflow-hidden">
+                        <div className="p-4 border-b border-gray-700">
+                            <h3 className="text-lg font-bold">Team Members ({users.length})</h3>
+                        </div>
+                        <table className="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Added</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {users.map(user => (
+                                    <tr key={user.id}>
+                                        <td>
+                                            <span className="text-white font-medium">{user.email}</span>
+                                            {user.email === currentUserEmail && (
+                                                <span style={{ color: '#22c55e', fontSize: '12px', marginLeft: '8px' }}>(you)</span>
+                                            )}
+                                        </td>
+                                        <td>
+                                            <span className={`role-badge ${user.role === 'admin' ? 'role-admin' : 'role-member'}`}>
+                                                {user.role}
+                                            </span>
+                                        </td>
+                                        <td className="text-sm text-gray-400">
+                                            {new Date(user.created_at).toLocaleDateString()}
+                                        </td>
+                                        <td>
+                                            {user.email !== currentUserEmail && (
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => toggleRole(user)}
+                                                        className="btn btn-secondary"
+                                                        style={{ padding: '4px 10px', fontSize: '12px' }}
+                                                    >
+                                                        Make {user.role === 'admin' ? 'Member' : 'Admin'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => removeUser(user)}
+                                                        className="btn-danger"
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        }
+
+        // Main App Component
+        function App() {
+            const [kols, setKols] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [activeTab, setActiveTab] = useState('database');
+            const { toasts, show: showToast } = useToast();
+
+            // Auth state
+            const [user, setUser] = useState(null);
+            const [isAdmin, setIsAdmin] = useState(false);
+            const [accessDenied, setAccessDenied] = useState(false);
+            const [authLoading, setAuthLoading] = useState(true);
+            const [loginLoading, setLoginLoading] = useState(false);
+
+            // Check if user is allowed and get role
+            const checkAccess = useCallback(async (email) => {
+                try {
+                    const { data, error } = await db
+                        .from('allowed_users')
+                        .select('role')
+                        .eq('email', email.toLowerCase())
+                        .single();
+
+                    if (error || !data) {
+                        setAccessDenied(true);
+                        setIsAdmin(false);
+                        return false;
+                    }
+
+                    setAccessDenied(false);
+                    setIsAdmin(data.role === 'admin');
+                    return true;
+                } catch (err) {
+                    console.error('Access check error:', err);
+                    setAccessDenied(true);
+                    return false;
+                }
+            }, []);
+
+            // Auth state listener
+            useEffect(() => {
+                const { data: { subscription } } = db.auth.onAuthStateChange(async (event, session) => {
+                    if (session?.user) {
+                        setUser(session.user);
+                        await checkAccess(session.user.email);
+                    } else {
+                        setUser(null);
+                        setIsAdmin(false);
+                        setAccessDenied(false);
+                    }
+                    setAuthLoading(false);
+                });
+
+                // Check existing session
+                db.auth.getSession().then(async ({ data: { session } }) => {
+                    if (session?.user) {
+                        setUser(session.user);
+                        await checkAccess(session.user.email);
+                    }
+                    setAuthLoading(false);
+                });
+
+                return () => subscription.unsubscribe();
+            }, [checkAccess]);
+
+            const handleLogin = async () => {
+                setLoginLoading(true);
+                try {
+                    const { error } = await db.auth.signInWithOAuth({
+                        provider: 'google',
+                        options: {
+                            redirectTo: window.location.origin + window.location.pathname
+                        }
+                    });
+                    if (error) throw error;
+                } catch (error) {
+                    console.error('Login error:', error);
+                    showToast('Login failed. Please try again.', 'error');
+                    setLoginLoading(false);
+                }
+            };
+
+            const handleLogout = async () => {
+                await db.auth.signOut();
+                setUser(null);
+                setIsAdmin(false);
+                setAccessDenied(false);
+                setActiveTab('database');
+            };
+
+            const loadKols = useCallback(async () => {
+                try {
+                    const { data, error } = await db
+                        .from('kols')
+                        .select('*');
+
+                    if (error) throw error;
+                    setKols(data || []);
+                } catch (error) {
+                    console.error('Error loading KOLs:', error);
+                    showToast('Error loading KOLs', 'error');
+                }
+                setLoading(false);
+            }, [showToast]);
+
+            useEffect(() => {
+                if (user && !accessDenied) {
+                    loadKols();
+                }
+            }, [user, accessDenied, loadKols]);
+
+            // Auth loading spinner
+            if (authLoading) {
+                return (
+                    <div className="login-container">
+                        <div className="loading" style={{ width: '40px', height: '40px' }}></div>
+                    </div>
+                );
+            }
+
+            // Not logged in → show login screen
+            if (!user) {
+                return (
+                    <>
+                        <LoginScreen onLogin={handleLogin} loading={loginLoading} />
+                        {toasts.map(toast => (
+                            <Toast key={toast.id} message={toast.message} type={toast.type} />
+                        ))}
+                    </>
+                );
+            }
+
+            // Logged in but not authorized
+            if (accessDenied) {
+                return (
+                    <>
+                        <AccessDeniedScreen email={user.email} onLogout={handleLogout} />
+                        {toasts.map(toast => (
+                            <Toast key={toast.id} message={toast.message} type={toast.type} />
+                        ))}
+                    </>
+                );
+            }
+
+            // Build tabs array
+            const tabs = [
+                { id: 'database', label: 'KOL Database' },
+                { id: 'dashboard', label: 'Dashboard' },
+                { id: 'add', label: 'Add KOL' }
+            ];
+            if (isAdmin) {
+                tabs.push({ id: 'users', label: 'Users' });
+            }
+
+            return (
+                <div className="min-h-screen">
+                    <div className="header sticky top-0 z-20">
+                        <div className="max-w-7xl mx-auto px-4 py-4">
+                            <div className="flex items-center justify-between mb-4">
+                                <h1 className="text-3xl font-bold">
+                                    <span className="text-green-400">Lx.</span><span className="text-white">health</span>
+                                </h1>
+                                <div className="user-info">
+                                    <span className="user-email">{user.email}</span>
+                                    {isAdmin && <span className="role-badge role-admin">admin</span>}
+                                    <button className="btn-logout" onClick={handleLogout}>Sign out</button>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-6 border-b border-gray-700">
+                                {tabs.map(tab => (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setActiveTab(tab.id)}
+                                        className={`py-3 px-1 font-semibold border-b-2 transition-colors ${
+                                            activeTab === tab.id
+                                                ? 'tab-active'
+                                                : 'border-transparent text-gray-400 hover:text-gray-200'
+                                        }`}
+                                    >
+                                        {tab.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <main className="max-w-7xl mx-auto px-4 py-6">
+                        {loading ? (
+                            <div className="flex justify-center items-center h-64">
+                                <div className="loading" style={{ width: '40px', height: '40px' }}></div>
+                            </div>
+                        ) : (
+                            <>
+                                {activeTab === 'dashboard' && <DashboardTab kols={kols} />}
+                                {activeTab === 'database' && <KOLDatabaseTab kols={kols} showToast={showToast} />}
+                                {activeTab === 'add' && <AddKOLTab showToast={showToast} onKOLAdded={loadKols} />}
+                                {activeTab === 'users' && isAdmin && <AdminPanel showToast={showToast} currentUserEmail={user.email} />}
+                            </>
+                        )}
+                    </main>
+
+                    {toasts.map(toast => (
+                        <Toast key={toast.id} message={toast.message} type={toast.type} />
+                    ))}
+                </div>
+            );
+        }
+
+        // Render app
+        const root = ReactDOM.createRoot(document.getElementById('app'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
