@@ -1855,8 +1855,14 @@
             useEffect(() => {
                 let mounted = true;
 
+                // Safety timeout — if auth never resolves, show login screen
+                const timeout = setTimeout(() => {
+                    if (mounted) setAuthLoading(false);
+                }, 3000);
+
                 const { data: { subscription } } = db.auth.onAuthStateChange(async (event, session) => {
                     if (!mounted) return;
+                    clearTimeout(timeout);
                     if (session?.user) {
                         setUser(session.user);
                         await checkAccess(session.user.email);
@@ -1868,21 +1874,9 @@
                     setAuthLoading(false);
                 });
 
-                // Fallback: check existing session in case onAuthStateChange doesn't fire
-                db.auth.getSession().then(async ({ data: { session } }) => {
-                    if (!mounted) return;
-                    if (session?.user) {
-                        setUser(session.user);
-                        await checkAccess(session.user.email);
-                    }
-                    setAuthLoading(false);
-                }).catch(() => {
-                    // Handle "signal is aborted" or other errors gracefully
-                    if (mounted) setAuthLoading(false);
-                });
-
                 return () => {
                     mounted = false;
+                    clearTimeout(timeout);
                     subscription.unsubscribe();
                 };
             }, [checkAccess]);
