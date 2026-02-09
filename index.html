@@ -9,7 +9,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- Supabase JS -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1"></script>
 
     <!-- React & Babel -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -1853,7 +1853,10 @@
 
             // Auth state listener
             useEffect(() => {
+                let mounted = true;
+
                 const { data: { subscription } } = db.auth.onAuthStateChange(async (event, session) => {
+                    if (!mounted) return;
                     if (session?.user) {
                         setUser(session.user);
                         await checkAccess(session.user.email);
@@ -1865,16 +1868,23 @@
                     setAuthLoading(false);
                 });
 
-                // Check existing session
+                // Fallback: check existing session in case onAuthStateChange doesn't fire
                 db.auth.getSession().then(async ({ data: { session } }) => {
+                    if (!mounted) return;
                     if (session?.user) {
                         setUser(session.user);
                         await checkAccess(session.user.email);
                     }
                     setAuthLoading(false);
+                }).catch(() => {
+                    // Handle "signal is aborted" or other errors gracefully
+                    if (mounted) setAuthLoading(false);
                 });
 
-                return () => subscription.unsubscribe();
+                return () => {
+                    mounted = false;
+                    subscription.unsubscribe();
+                };
             }, [checkAccess]);
 
             const handleLogin = async () => {
