@@ -1855,24 +1855,31 @@
             useEffect(() => {
                 let mounted = true;
 
-                // Safety timeout — if auth never resolves, show login screen
-                const timeout = setTimeout(() => {
-                    if (mounted) setAuthLoading(false);
-                }, 3000);
-
                 const { data: { subscription } } = db.auth.onAuthStateChange(async (event, session) => {
+                    console.log('Auth event:', event, session?.user?.email || 'no user');
                     if (!mounted) return;
-                    clearTimeout(timeout);
                     if (session?.user) {
                         setUser(session.user);
-                        await checkAccess(session.user.email);
+                        try {
+                            await checkAccess(session.user.email);
+                        } catch (err) {
+                            console.error('checkAccess failed:', err);
+                        }
                     } else {
                         setUser(null);
                         setIsAdmin(false);
                         setAccessDenied(false);
                     }
-                    setAuthLoading(false);
+                    if (mounted) setAuthLoading(false);
                 });
+
+                // Safety timeout — if onAuthStateChange never fires
+                const timeout = setTimeout(() => {
+                    if (mounted) {
+                        console.log('Auth timeout — forcing login screen');
+                        setAuthLoading(false);
+                    }
+                }, 5000);
 
                 return () => {
                     mounted = false;
