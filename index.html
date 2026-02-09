@@ -1851,42 +1851,63 @@
                 }
             }, []);
 
-            // Auth state listener
+            // Auth state listener — only set user, don't query DB inside callback
             useEffect(() => {
                 let mounted = true;
 
-                const { data: { subscription } } = db.auth.onAuthStateChange(async (event, session) => {
-                    console.log('Auth event:', event, session?.user?.email || 'no user');
+                const { data: { subscription } } = db.auth.onAuthStateChange((event, session) => {
                     if (!mounted) return;
                     if (session?.user) {
                         setUser(session.user);
-                        try {
-                            await checkAccess(session.user.email);
-                        } catch (err) {
-                            console.error('checkAccess failed:', err);
-                        }
                     } else {
                         setUser(null);
                         setIsAdmin(false);
                         setAccessDenied(false);
                     }
-                    if (mounted) setAuthLoading(false);
+                    setAuthLoading(false);
                 });
 
-                // Safety timeout — if onAuthStateChange never fires
+                // Safety timeout
                 const timeout = setTimeout(() => {
-                    if (mounted) {
-                        console.log('Auth timeout — forcing login screen');
-                        setAuthLoading(false);
-                    }
-                }, 5000);
+                    if (mounted) setAuthLoading(false);
+                }, 3000);
 
                 return () => {
                     mounted = false;
                     clearTimeout(timeout);
                     subscription.unsubscribe();
                 };
-            }, [checkAccess]);
+            }, []);
+
+            // Separate effect: check access when user changes (avoids Supabase client deadlock)
+            useEffect(() => {
+                if (!user) return;
+                let cancelled = false;
+                (async () => {
+                    try {
+                        const { data, error } = await db
+                            .from('allowed_users')
+                            .select('role')
+                            .eq('email', user.email.toLowerCase())
+                            .single();
+
+                        if (cancelled) return;
+                        if (error || !data) {
+                            setAccessDenied(true);
+                            setIsAdmin(false);
+                        } else {
+                            setAccessDenied(false);
+                            setIsAdmin(data.role === 'admin');
+                        }
+                    } catch (err) {
+                        if (!cancelled) {
+                            console.error('Access check error:', err);
+                            setAccessDenied(true);
+                        }
+                    }
+                })();
+                return () => { cancelled = true; };
+            }, [user]);
 
             const handleLogin = async () => {
                 setLoginLoading(true);
